@@ -1,5 +1,5 @@
 # ===============================================
-# 🎮 Ping Challenge Game (Colab Edition - English)
+# 🎮 Ping Challenge Game (Replay + Custom Loop)
 # ===============================================
 !pip install ping3 pandas --quiet
 
@@ -10,47 +10,87 @@ from datetime import datetime
 import pandas as pd
 
 # ===============================================
-# ⚙️ Setup Parameters
+# ⚙️ Default Server List (20+)
 # ===============================================
-HOSTS = ["8.8.8.8", "1.1.1.1", "google.com", "cloudflare.com"]
-ROUNDS = 5   # number of game rounds
+DEFAULT_HOSTS = [
+    "8.8.8.8", "1.1.1.1", "google.com", "cloudflare.com", "yahoo.com",
+    "facebook.com", "twitter.com", "youtube.com", "microsoft.com", "apple.com",
+    "openai.com", "amazon.com", "aws.amazon.com", "github.com", "reddit.com",
+    "bing.com", "twitch.tv", "discord.com", "zoom.us", "spotify.com",
+    "wikipedia.org", "linkedin.com", "netflix.com", "steamcommunity.com"
+]
 
 # ===============================================
-# 🧠 Game Logic
+# 🧠 Core Game Function
 # ===============================================
 def play_ping_challenge(hosts, rounds=5):
     score = 0
     results = []
 
-    print("🎮 Welcome to *Ping Challenge!*")
-    print("Guess which server has the fastest response!\n")
+    print("\n🎮 Welcome to *Ping Challenge!*")
+    print("Guess which server responds the fastest!\n")
 
+    # --- Custom Servers Setup ---
+    custom_servers = []
+    use_custom = input("✨ Do you want to use your own servers? (y/n): ").lower()
+
+    if use_custom == "y":
+        print("You can add up to 3 servers.")
+        while len(custom_servers) < 3:
+            new_host = input(f"🧩 Enter domain/IP ({len(custom_servers)+1}/3, or press Enter to stop): ").strip()
+            if not new_host:
+                break
+            custom_servers.append(new_host)
+            print(f"✅ Added: {new_host}")
+        print(f"\n🆗 Custom server list: {custom_servers}\n")
+        if custom_servers:
+            hosts = custom_servers  # use only custom servers
+
+    print(f"✅ Total servers available: {len(hosts)}")
+    print("-" * 50)
+
+    # --- Game Rounds ---
     for i in range(1, rounds + 1):
-        print(f"🌀 Round {i}/{rounds}")
-        sample = random.sample(hosts, k=3)  # pick 3 random hosts
+        print(f"\n🌀 Round {i}/{rounds}")
 
-        # Show choices
-        for idx, h in enumerate(sample):
-            print(f"  {idx+1}. {h}")
+        # Auto pick if custom servers = 3
+        if len(hosts) == 3 and hosts == custom_servers:
+            sample = hosts
+            print("🎯 Using your custom 3 servers:")
+            for idx, h in enumerate(sample):
+                print(f"  {idx+1}. {h}")
+        else:
+            print("Available servers:")
+            for idx, h in enumerate(hosts):
+                print(f"  {idx+1}. {h}")
+            try:
+                picks = input("\n🎯 Pick 3 server numbers (e.g. 1 5 9): ")
+                picks = [int(p) for p in picks.split() if p.isdigit()]
+                if len(picks) != 3 or not all(1 <= p <= len(hosts) for p in picks):
+                    raise ValueError
+                sample = [hosts[p - 1] for p in picks]
+            except ValueError:
+                print("⚠️ Invalid input. Skipping this round.\n")
+                continue
 
-        # Get player's guess
+        # --- Guess Fastest ---
         try:
-            choice = int(input("\n👉 Choose the number of the fastest server: "))
-            if not (1 <= choice <= len(sample)):
+            choice = int(input("\n👉 Guess which one is the fastest (1–3): "))
+            if not (1 <= choice <= 3):
                 raise ValueError
         except ValueError:
-            print("⚠️ Invalid input, skipping this round.")
+            print("⚠️ Invalid guess. Skipping this round.\n")
             continue
 
-        # Perform ping for all hosts in this round
+        # --- Ping ---
         times = {}
-        print("\n📡 Pinging servers...")
+        print("\n📡 Pinging selected servers...")
         for h in sample:
             rtt = ping(h, unit='ms', timeout=2)
             times[h] = round(rtt, 2) if rtt else None
             time.sleep(0.5)
 
-        # Determine the fastest
+        # --- Fastest Result ---
         fastest = min(
             (h for h in sample if times[h] is not None),
             key=lambda h: times[h],
@@ -61,11 +101,51 @@ def play_ping_challenge(hosts, rounds=5):
         for h, t in times.items():
             print(f" - {h}: {t if t else 'timeout'} ms")
 
-        # Check guess
+        # --- Evaluate ---
         if fastest is None:
             print("⚠️ All hosts timed out! No winner this round.\n")
         elif sample[choice-1] == fastest:
             print(f"✅ Correct! {fastest} is the fastest ({times[fastest]} ms)")
             score += 1
         else:
-            print(
+            print(f"❌ Wrong! The fastest was {fastest} ({times[fastest]} ms)")
+
+        results.append({
+            "round": i,
+            "chosen_hosts": sample,
+            "guess": sample[choice-1] if 1 <= choice <= 3 else None,
+            "fastest": fastest,
+            "correct": sample[choice-1] == fastest if fastest else False,
+            "rtts": times,
+            "timestamp": datetime.now()
+        })
+        print("-" * 50)
+
+    # --- Summary ---
+    df = pd.DataFrame(results)
+    print(f"\n🏁 Game Over! Final Score: {score}/{rounds}")
+    print(df[["round", "guess", "fastest", "correct"]])
+
+    return df
+
+
+# ===============================================
+# 🔁 Replay Loop
+# ===============================================
+def start_game_loop():
+    print("🚀 Starting Ping Challenge Loop!\n")
+    while True:
+        df = play_ping_challenge(DEFAULT_HOSTS, rounds=5)
+
+        # Ask if user wants to play again
+        again = input("\n🔁 Do you want to play again (custom/default)? (y/n): ").lower()
+        if again != "y":
+            print("\n👋 Thanks for playing Ping Challenge! Goodbye!")
+            break
+        print("\n✨ Restarting game...\n")
+        time.sleep(1)
+
+# ===============================================
+# ▶️ Run Loop
+# ===============================================
+start_game_loop()
