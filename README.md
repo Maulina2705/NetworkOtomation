@@ -1,5 +1,5 @@
 # 🧠 NetworkOtomation
-Explorations and mini projects related to **Network Automation**, **IoT connectivity**, and **embedded communication systems**.
+Explorations and mini projects related to **Network Automation** class.
 
 ## 🔍 Overview
 This repository contains ideas, prototypes, and research experiments focusing on:
